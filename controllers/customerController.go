@@ -83,3 +83,35 @@ func SyncCreateCustomer(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("✅ Cliente sincronizado correctamente en ReadCustomer:", customer.Email)
 	w.WriteHeader(http.StatusCreated)
 }
+
+// 📌 **Sincronizar actualización de clientes desde `UpdateCustomer`**
+func SyncUpdateCustomer(w http.ResponseWriter, r *http.Request) {
+	var updatedCustomer models.Customer
+	err := json.NewDecoder(r.Body).Decode(&updatedCustomer)
+	if err != nil {
+		http.Error(w, "❌ Entrada inválida", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("📌 Recibida solicitud de sincronización para:", updatedCustomer.Email)
+
+	customerCollection := config.GetDB().Collection("customers")
+	if customerCollection == nil {
+		http.Error(w, "Database not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// ✅ Actualizar cliente en MongoDB
+	_, err = customerCollection.UpdateOne(
+		context.TODO(),
+		bson.M{"email": updatedCustomer.Email},
+		bson.M{"$set": updatedCustomer},
+	)
+	if err != nil {
+		http.Error(w, "❌ Error al sincronizar actualización", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("✅ Cliente sincronizado correctamente en ReadCustomer/CreateCustomer:", updatedCustomer.Email)
+	w.WriteHeader(http.StatusOK)
+}
