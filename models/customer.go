@@ -8,7 +8,7 @@ import (
 
 // Customer representa el esquema de la colección en MongoDB
 type Customer struct {
-	ID        primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	ID        primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"` // 🔥 Debe ser siempre ObjectID
 	FirstName string             `json:"first_name" bson:"first_name"`
 	LastName  string             `json:"last_name" bson:"last_name"`
 	Email     string             `json:"email" bson:"email"`
