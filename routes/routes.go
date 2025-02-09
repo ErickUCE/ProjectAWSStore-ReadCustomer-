@@ -20,7 +20,7 @@ func SetupRoutes(db *mongo.Database) *mux.Router {
 	// Endpoint de sincronización desde `CreateCustomer`
 	router.HandleFunc("/sync-create", controllers.SyncCreateCustomer).Methods("POST")
 	router.HandleFunc("/sync-update", controllers.SyncUpdateCustomer).Methods("POST")
-	//router.HandleFunc("/sync-delete", controllers.SyncDeleteCustomer).Methods("POST")
+	router.HandleFunc("/sync-delete/{id}", controllers.SyncDeleteCustomer).Methods("DELETE")
 
 	return router
 }
