@@ -19,6 +19,7 @@ func SetupRoutes(db *mongo.Database) *mux.Router {
 	router.HandleFunc("/sync-customer", controllers.SyncCreateCustomer).Methods("POST")
 	// Endpoint de sincronización desde `CreateCustomer`
 	router.HandleFunc("/sync-create", controllers.SyncCreateCustomer).Methods("POST")
+	router.HandleFunc("/sync-update", controllers.SyncUpdateCustomer).Methods("POST")
 
 	return router
 }

@@ -10,6 +10,7 @@ import (
 	"ProjectAWSStore-ReadCustomer/models"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -22,11 +23,6 @@ func SetCustomerCollection(db *mongo.Database) {
 
 // 📌 Obtener todos los clientes
 func GetAllCustomers(w http.ResponseWriter, r *http.Request) {
-	if customerCollection == nil {
-		http.Error(w, "❌ Error: la base de datos no está inicializada", http.StatusInternalServerError)
-		return
-	}
-
 	var customers []models.Customer
 
 	cursor, err := customerCollection.Find(context.TODO(), bson.M{})
@@ -48,6 +44,56 @@ func GetAllCustomers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customers)
 }
+
+// 📌 **Sincronizar actualización de clientes desde `UpdateCustomer`**
+// 📌 **Sincronizar actualización de clientes desde `UpdateCustomer`**
+func SyncUpdateCustomer(w http.ResponseWriter, r *http.Request) {
+	var updatedCustomer models.Customer
+	err := json.NewDecoder(r.Body).Decode(&updatedCustomer)
+	if err != nil {
+		http.Error(w, "❌ Entrada inválida", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("📌 Recibida solicitud de sincronización para:", updatedCustomer.Email)
+
+	customerCollection := config.GetDB().Collection("customers")
+	if customerCollection == nil {
+		http.Error(w, "Database not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// ✅ Validar si `ID` está vacío
+	if updatedCustomer.ID == primitive.NilObjectID {
+		fmt.Println("⚠️ Error: `ID` vacío en la sincronización de actualización.")
+		http.Error(w, "⚠️ Error: `ID` vacío en la sincronización", http.StatusBadRequest)
+		return
+	}
+
+	// 📌 Crear el filtro para buscar por `_id` (NO ES NECESARIO CONVERTIR)
+	filter := bson.M{"_id": updatedCustomer.ID}
+	update := bson.M{"$set": updatedCustomer}
+
+	// 📌 Intentar actualizar el cliente en la base de datos
+	result, err := customerCollection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		fmt.Println("❌ Error al actualizar cliente en MongoDB:", err)
+		http.Error(w, "❌ Error al sincronizar actualización", http.StatusInternalServerError)
+		return
+	}
+
+	// 📌 Verificar si realmente se encontró y actualizó el cliente
+	if result.MatchedCount == 0 {
+		fmt.Println("⚠️ Cliente no encontrado en la base de datos durante sincronización.")
+		http.Error(w, "⚠️ Cliente no encontrado en la base de datos durante sincronización.", http.StatusNotFound)
+		return
+	}
+
+	// ✅ Cliente actualizado correctamente
+	fmt.Println("✅ Cliente sincronizado correctamente en ReadCustomer:", updatedCustomer.Email)
+	w.WriteHeader(http.StatusOK)
+}
+
 func SyncCreateCustomer(w http.ResponseWriter, r *http.Request) {
 	var customer models.Customer
 	err := json.NewDecoder(r.Body).Decode(&customer)
@@ -82,36 +128,4 @@ func SyncCreateCustomer(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("✅ Cliente sincronizado correctamente en ReadCustomer:", customer.Email)
 	w.WriteHeader(http.StatusCreated)
-}
-
-// 📌 **Sincronizar actualización de clientes desde `UpdateCustomer`**
-func SyncUpdateCustomer(w http.ResponseWriter, r *http.Request) {
-	var updatedCustomer models.Customer
-	err := json.NewDecoder(r.Body).Decode(&updatedCustomer)
-	if err != nil {
-		http.Error(w, "❌ Entrada inválida", http.StatusBadRequest)
-		return
-	}
-
-	fmt.Println("📌 Recibida solicitud de sincronización para:", updatedCustomer.Email)
-
-	customerCollection := config.GetDB().Collection("customers")
-	if customerCollection == nil {
-		http.Error(w, "Database not initialized", http.StatusInternalServerError)
-		return
-	}
-
-	// ✅ Actualizar cliente en MongoDB
-	_, err = customerCollection.UpdateOne(
-		context.TODO(),
-		bson.M{"email": updatedCustomer.Email},
-		bson.M{"$set": updatedCustomer},
-	)
-	if err != nil {
-		http.Error(w, "❌ Error al sincronizar actualización", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Println("✅ Cliente sincronizado correctamente en ReadCustomer/CreateCustomer:", updatedCustomer.Email)
-	w.WriteHeader(http.StatusOK)
 }
