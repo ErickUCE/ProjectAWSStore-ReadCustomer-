@@ -9,6 +9,7 @@ import (
 	"ProjectAWSStore-ReadCustomer/config"
 	"ProjectAWSStore-ReadCustomer/routes"
 
+	"github.com/gorilla/handlers"
 	"github.com/joho/godotenv"
 )
 
@@ -34,13 +35,20 @@ func main() {
 	// ✅ Configurar rutas después de conectar a MongoDB
 	router := routes.SetupRoutes(db)
 
+	// ✅ Aplicar middleware de CORS al router
+	corsHandler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}), // ✅ Permitir solicitudes desde el frontend
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"}),
+		handlers.AllowedHeaders([]string{"Content-Type"}),
+	)(router)
+
 	// 📌 Obtener el puerto desde `.env`
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8081" // 🔥 Valor por defecto
+		port = "8082" // 🔥 Valor por defecto corregido a 8082
 	}
 
-	// ✅ Iniciar el servidor en el puerto definido en `.env`
+	// ✅ Iniciar el servidor con CORS habilitado
 	fmt.Println("✅ Servidor corriendo en el puerto", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	log.Fatal(http.ListenAndServe(":"+port, corsHandler))
 }
